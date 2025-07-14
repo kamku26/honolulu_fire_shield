@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Honolulu Fire Shield</title>
+		<link
+			rel="stylesheet"
+			href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+		/>
+	</head>
+	<body>
+		<div class="container mt-4">
+			<h2>Home Fire Defense Dashboard</h2>
+
+			<div id="alert-section"></div>
+
+			<h4 class="mt-4">Overall Fire Status</h4>
+
+			{% if active_fire %}
+			<div class="alert alert-danger">
+				🔥 Active Fire Alerts Detected — Stay Prepared
+			</div>
+			{% else %}
+			<div class="alert alert-success">
+				✅ No Active Fire Alerts in Your Area
+			</div>
+			{% endif %}
+
+<h4 class="mt-4">Fire Danger Level</h4>
+<div class="progress" style="height: 30px;">
+    <div id="fire-risk-bar" class="progress-bar" role="progressbar" style="width: 0%;">Loading...</div>
+</div>
+
+<h4 class="mt-4">Weather in the Area</h4>
+<div id="weather-section">
+    <p>Fetching weather...</p>
+</div>
+
+<h4 class="mt-4">Wildfire Tracking</h4>
+<div id="map" style="height: 300px;"></div>
+
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+    var map = L.map('map').setView([20.5, -155.5], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    function updateWeather(lat, lon) {
+        fetch(`/get-weather?lat=${lat}&lon=${lon}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById("weather-section").innerHTML = "<p>Weather data unavailable.</p>";
+                    return;
+                }
+                document.getElementById("weather-section").innerHTML = `
+                    <p>🌡 ${data.temperature}°F</p>
+                    <p>💨 ${data.wind_speed} mph from ${data.wind_direction}</p>
+                    <p>💧 Humidity: ${data.humidity}%</p>
+                    <p>🌧 Precipitation: ${data.precipitation}%</p>
+                `;
+
+
+				let risk = 0;
+				if (data.temperature > 85) risk += 40;
+				if (data.wind_speed > 10) risk += 30;
+				if (data.humidity < 30) risk += 20;
+				if (data.precipitation < 10) risk += 10;
+
+				risk = Math.min(risk, 100);
+
+				const bar = document.getElementById("fire-risk-bar");
+				bar.style.width = `${risk}%`;
+				bar.textContent = risk < 30 ? "Low" : risk < 70 ? "Moderate" : "High";
+				bar.className = "progress-bar " + (
+					risk < 30 ? "bg-success" :
+					risk < 70 ? "bg-warning" :
+                "bg-danger"
+            );
+            })
+            .catch(() => {
+                document.getElementById("weather-section").innerHTML = "<p>Weather fetch failed.</p>";
+            });
+    }
+
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            var lat = position.coords.latitude;
+            var lon = position.coords.longitude;
+
+            map.setView([lat, lon], 10);
+            L.marker([lat, lon]).addTo(map).bindPopup("You are here").openPopup();
+
+            updateWeather(lat, lon);
+        }, function(error) {
+            console.log("Geolocation error:", error);
+            document.getElementById("weather-section").innerHTML = "<p>Location access denied.</p>";
+        });
+    } else {
+        document.getElementById("weather-section").innerHTML = "<p>Geolocation not supported.</p>";
+    }
+</script>
+	</body>
+</html>
