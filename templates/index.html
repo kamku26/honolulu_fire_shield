@@ -55,7 +55,10 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+
+    //Initialize map centered on Hawaii before Zip code input
     var map = L.map('map').setView([20.5, -155.5], 7);
+    
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
