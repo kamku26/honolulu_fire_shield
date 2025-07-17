@@ -16,6 +16,7 @@ def get_weather_route():
 
 @app.route("/")
 def index():
+    lit = 1
     lat = session.get("lat", 20.5)
     lon = session.get("lon", -155.5)
     alerts = get_fire_alerts()
