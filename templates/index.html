@@ -12,6 +12,12 @@
 		<div class="container mt-4">
 			<h2>Home Fire Defense Dashboard</h2>
 
+            <form onsubmit="return false;">
+                <label for="zip-input">Enter ZIP Code:</label>
+                <input type="text" id="zip-input" placeholder="e.g., 96720" required />
+                <button id="zip-submit" type="button">Update Location</button>
+            </form>
+
 			<div id="alert-section"></div>
 
 			<h4 class="mt-4">Overall Fire Status</h4>
@@ -43,13 +49,19 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
+
+<!----------------------------------------------------------------------------------------->
+
+
 <script>
+document.addEventListener("DOMContentLoaded", function () {
     var map = L.map('map').setView([20.5, -155.5], 7);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
     function updateWeather(lat, lon) {
+        console.log("Calling /get-weather with:", lat, lon);
         fetch(`/get-weather?lat=${lat}&lon=${lon}`)
             .then(res => res.json())
             .then(data => {
@@ -64,45 +76,59 @@
                     <p>🌧 Precipitation: ${data.precipitation}%</p>
                 `;
 
+                let risk = 0;
+                if (data.temperature > 85) risk += 40;
+                if (data.wind_speed > 10) risk += 30;
+                if (data.humidity < 30) risk += 20;
+                if (data.precipitation < 10) risk += 10;
 
-				let risk = 0;
-				if (data.temperature > 85) risk += 40;
-				if (data.wind_speed > 10) risk += 30;
-				if (data.humidity < 30) risk += 20;
-				if (data.precipitation < 10) risk += 10;
-
-				risk = Math.min(risk, 100);
-
-				const bar = document.getElementById("fire-risk-bar");
-				bar.style.width = `${risk}%`;
-				bar.textContent = risk < 30 ? "Low" : risk < 70 ? "Moderate" : "High";
-				bar.className = "progress-bar " + (
-					risk < 30 ? "bg-success" :
-					risk < 70 ? "bg-warning" :
-                "bg-danger"
-            );
+                risk = Math.min(risk, 100);
+                const bar = document.getElementById("fire-risk-bar");
+                bar.style.width = `${risk}%`;
+                bar.textContent = risk < 30 ? "Low" : risk < 70 ? "Moderate" : "High";
+                bar.className = "progress-bar " + (
+                    risk < 30 ? "bg-success" :
+                    risk < 70 ? "bg-warning" :
+                    "bg-danger"
+                );
             })
             .catch(() => {
                 document.getElementById("weather-section").innerHTML = "<p>Weather fetch failed.</p>";
             });
     }
 
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-            var lat = position.coords.latitude;
-            var lon = position.coords.longitude;
+    document.getElementById("zip-submit").addEventListener("click", async () => {
+        const zip = document.getElementById("zip-input").value.trim();
+        if (!zip) {
+            alert("Please enter a ZIP code.");
+            return;
+        }
 
-            map.setView([lat, lon], 10);
-            L.marker([lat, lon]).addTo(map).bindPopup("You are here").openPopup();
+        console.log("Looking up ZIP:", zip);
+        try {
+            const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${zip}&count=1`);
+            const data = await response.json();
+            if (data.results && data.results.length > 0) {
+                const { latitude, longitude, name } = data.results[0];
+                console.log("ZIP found:", latitude, longitude);
+                map.setView([latitude, longitude], 10);
+            if (window.currentMarker) {
+                map.removeLayer(window.currentMarker);
+            }
+window.currentMarker = L.marker([latitude, longitude])
+    .addTo(map)
+    .bindPopup(`ZIP: ${zip} (${name})`)
+    .openPopup();                updateWeather(latitude, longitude);
+            } else {
+                alert("ZIP code not found.");
+            }
+        } catch (error) {
+            console.error("ZIP lookup failed:", error);
+            alert("Error retrieving location for ZIP.");
+        }
+    });
+});
 
-            updateWeather(lat, lon);
-        }, function(error) {
-            console.log("Geolocation error:", error);
-            document.getElementById("weather-section").innerHTML = "<p>Location access denied.</p>";
-        });
-    } else {
-        document.getElementById("weather-section").innerHTML = "<p>Geolocation not supported.</p>";
-    }
 </script>
 	</body>
 </html>
