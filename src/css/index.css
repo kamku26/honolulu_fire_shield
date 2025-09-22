@@ -1,4 +1,227 @@
+:root {
+	--bg: #0b1020;
+	--bg-2: #0e1530;
+	--card: #111a33cc; /* glass card */
+	--text: #e7ecf7;
+	--muted: #a8b1c7;
+	--ring: #6aa7ff55;
+	--accent: #7cc4ff;
+	--ok: #2ecc71;
+	--warn: #f4c542;
+	--high: #ff7a59;
+	--vhigh: #ff5252;
+	--extreme: #bb2a2a;
+	--shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+	--radius: 16px;
+}
+
+* {
+	box-sizing: border-box;
+}
+html,
+body,
+#root {
+	height: 100%;
+}
 body {
 	margin: 0;
-	font-family: Arial, sans-serif;
+	color: var(--text);
+	background: radial-gradient(
+			1200px 700px at 0% 0%,
+			#14204b 0%,
+			transparent 60%
+		),
+		radial-gradient(1000px 600px at 100% 0%, #1a2a6e 0%, transparent 60%),
+		linear-gradient(180deg, var(--bg), var(--bg-2));
+	font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter,
+		Roboto, "Helvetica Neue", Arial;
+}
+
+/* ===== Layout ===== */
+.app-shell {
+	max-width: 1100px;
+	margin: 0 auto;
+	padding: 24px;
+}
+.app-header {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	margin-bottom: 20px;
+}
+.logo-dot {
+	width: 36px;
+	height: 36px;
+	border-radius: 12px;
+	background: linear-gradient(135deg, #4dd4ff, #54ffa1);
+	box-shadow: 0 6px 18px #4dd4ff44;
+}
+.h1 {
+	font-size: 28px;
+	font-weight: 700;
+	letter-spacing: 0.2px;
+	margin: 0;
+}
+.h1 small {
+	display: block;
+	color: var(--muted);
+	font-weight: 500;
+	font-size: 14px;
+	margin-top: 4px;
+}
+
+/* ===== Cards & Grid ===== */
+.grid {
+	display: grid;
+	gap: 16px;
+	grid-template-columns: 1fr;
+}
+@media (min-width: 860px) {
+	.grid {
+		grid-template-columns: 1.1fr 0.9fr;
+	}
+}
+.card {
+	background: var(--card);
+	backdrop-filter: blur(10px);
+	border: 1px solid #ffffff1c;
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+	padding: 18px;
+}
+.card-title {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-weight: 600;
+	margin: 0 0 12px 0;
+	color: #eef3ff;
+}
+.card-sub {
+	color: var(--muted);
+	font-size: 12px;
+}
+
+/* ===== Chips, badges ===== */
+.location-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	background: #ffffff12;
+	padding: 8px 12px;
+	border-radius: 999px;
+	border: 1px solid #ffffff22;
+	color: var(--text);
+}
+.location-chip svg {
+	opacity: 0.9;
+}
+
+/* ===== Metric tiles ===== */
+.metrics {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 12px;
+}
+@media (min-width: 680px) {
+	.metrics {
+		grid-template-columns: repeat(4, 1fr);
+	}
+}
+.tile {
+	padding: 14px;
+	border-radius: 12px;
+	background: #ffffff10;
+	border: 1px solid #ffffff1e;
+}
+.tile .label {
+	color: var(--muted);
+	font-size: 12px;
+}
+.tile .value {
+	font-size: 22px;
+	font-weight: 700;
+	margin-top: 4px;
+}
+
+/* ===== Risk meter (conic gauge) ===== */
+.risk-wrap {
+	display: flex;
+	align-items: center;
+	gap: 18px;
+}
+.gauge {
+	--size: 160px;
+	width: var(--size);
+	height: var(--size);
+	border-radius: 50%;
+	display: grid;
+	place-items: center;
+	position: relative;
+	box-shadow: inset 0 0 0 10px #0e1530, var(--shadow);
+}
+.gauge::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: 50%;
+	background: conic-gradient(
+		var(--ok) 0 20%,
+		var(--warn) 20% 45%,
+		var(--high) 45% 70%,
+		var(--vhigh) 70% 90%,
+		var(--extreme) 90% 100%
+	);
+	filter: saturate(1.1);
+	mask: radial-gradient(circle at center, transparent 53%, black 54%);
+}
+.gauge .score {
+	position: relative;
+	z-index: 1;
+	text-align: center;
+}
+.gauge .score .num {
+	font-size: 34px;
+	font-weight: 800;
+}
+.gauge .score .lvl {
+	font-size: 12px;
+	color: var(--muted);
+}
+
+/* Needle */
+.needle {
+	--angle: 0deg;
+	position: absolute;
+	width: 2px;
+	height: 36%;
+	background: #fff;
+	top: 14%;
+	left: 50%;
+	transform-origin: bottom center;
+	transform: translateX(-50%) rotate(var(--angle));
+	box-shadow: 0 0 0 1px #0006;
+}
+
+/* ===== Helpers ===== */
+.row {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+.help {
+	color: var(--muted);
+	font-size: 13px;
+}
+.btn {
+	background: #ffffff12;
+	color: var(--text);
+	border: 1px solid #ffffff22;
+	padding: 8px 12px;
+	border-radius: 10px;
+	cursor: pointer;
+}
+.btn:hover {
+	border-color: #ffffff44;
 }

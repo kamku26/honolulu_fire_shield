@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useMemo } from "react";
+import { FireRiskResult } from "../types/FireRiskResult";
 
 type Props = {
 	weather: {
@@ -8,41 +9,97 @@ type Props = {
 	} | null;
 };
 
-function assessFireRisk(weather: Props["weather"]) {
-	if (!weather)
-		return { level: "Unknown", details: "No weather data available." };
+// Map score → level
+function mapScoreToLevel(score: number): FireRiskResult {
+	let level: FireRiskResult["level"] = "Low";
+	if (score >= 7) level = "Extreme";
+	else if (score >= 5) level = "Very High";
+	else if (score >= 4) level = "High";
+	else if (score >= 2) level = "Moderate";
 
-	const { temp, humidity, wind } = weather;
-	let score = 0;
+	let explanation = "";
+	switch (level) {
+		case "Low":
+			explanation = "Conditions are safe. Minimal fire risk.";
+			break;
+		case "Moderate":
+			explanation = "Be cautious. Some factors may increase fire risk.";
+			break;
+		case "High":
+			explanation = "High chance of fire spread. Avoid open flames.";
+			break;
+		case "Very High":
+			explanation = "Conditions are dangerous. Fires can spread rapidly.";
+			break;
+		case "Extreme":
+			explanation = "Critical fire risk. Any fire could become uncontrollable.";
+			break;
+	}
 
-	// Simple scoring system
-	if (temp > 30) score += 2;
-	else if (temp > 25) score += 1;
+	const color =
+		level === "Low"
+			? "var(--ok)"
+			: level === "Moderate"
+			? "var(--warn)"
+			: level === "High"
+			? "var(--high)"
+			: level === "Very High"
+			? "var(--vhigh)"
+			: "var(--extreme)";
 
-	if (humidity < 30) score += 2;
-	else if (humidity < 50) score += 1;
-
-	if (wind > 10) score += 2;
-	else if (wind > 5) score += 1;
-
-	let level = "Low";
-	if (score >= 5) level = "High";
-	else if (score >= 3) level = "Moderate";
-
-	const details = `Temp: ${temp}°C, Humidity: ${humidity}%, Wind: ${wind} m/s`;
-
-	return { level, details };
+	return { score: score * 10, level, explanation, color };
 }
 
+// Compute fire risk
+function assessFireRisk(weather: Props["weather"]): FireRiskResult | null {
+	if (!weather) return null;
+	const { temp, humidity, wind } = weather;
+
+	let score = 0;
+	if (temp > 30) score += 3;
+	else if (temp > 25) score += 2;
+	else if (temp > 20) score += 1;
+
+	if (humidity < 20) score += 3;
+	else if (humidity < 35) score += 2;
+	else if (humidity < 50) score += 1;
+
+	if (wind > 15) score += 3;
+	else if (wind > 8) score += 2;
+	else if (wind > 4) score += 1;
+
+	return mapScoreToLevel(score);
+}
+
+// Angle helper
+const angleFromScore = (score: number) =>
+	`${Math.min(100, Math.max(0, score)) * 3.6 - 90}deg`;
+
 const FireRiskAssessment: React.FC<Props> = ({ weather }) => {
-	const risk = assessFireRisk(weather);
+	const risk = useMemo(() => assessFireRisk(weather), [weather]);
+
+	if (!risk) return <div className="help">No weather data available.</div>;
+
+	const needleAngle = angleFromScore(risk.score);
 
 	return (
-		<section>
-			<h2>Fire Risk Assessment</h2>
-			<p>Risk Level: {risk.level}</p>
-			<p>Details: {risk.details}</p>
-		</section>
+		<div className="risk-wrap">
+			<div className="gauge">
+				<div className="needle" style={{ ["--angle" as any]: needleAngle }} />
+				<div className="score">
+					<div className="num">{Math.round(risk.score)}</div>
+					<div className="lvl">{risk.level}</div>
+				</div>
+			</div>
+			<div>
+				<div style={{ fontWeight: 700, marginBottom: 6 }}>
+					Risk level: <span style={{ color: risk.color }}>{risk.level}</span>
+				</div>
+				<p className="help" style={{ maxWidth: 420, lineHeight: 1.4 }}>
+					{risk.explanation}
+				</p>
+			</div>
+		</div>
 	);
 };
 
