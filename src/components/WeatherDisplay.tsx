@@ -1,33 +1,33 @@
 import React from "react";
-import { useLiveLocation } from "../hooks/useLiveLocation";
-import { useWeatherData } from "../hooks/useWeatherData";
 
-type Props = {
-	weather: {
-		temp: number;
-		humidity: number;
-		wind: number;
-	} | null;
-};
+interface WeatherData {
+  temp: number;
+  humidity: number;
+  wind: number;
+}
 
-const WeatherDisplay: React.FC<Props> = () => {
-	const location = useLiveLocation();
-	const weather = useWeatherData(location?.lat ?? null, location?.lon ?? null);
+interface Props {
+  data: WeatherData | null;
+  loading: boolean;
+  error: string | null;
+}
 
-	return (
-		<section>
-			<h2>Current Weather</h2>
-			{weather ? (
-				<>
-					<p>Temperature: {weather.temp}°C</p>
-					<p>Humidity: {weather.humidity}%</p>
-					<p>Wind Speed: {weather.wind} m/s</p>
-				</>
-			) : (
-				<p>Loading weather data...</p>
-			)}
-		</section>
-	);
+const WeatherDisplay: React.FC<Props> = ({ data, loading, error }) => {
+  return (
+    <section>
+      <h2>Current Weather</h2>
+      {loading && <p>Loading weather data...</p>}
+      {error && !loading && <p style={{ color: 'var(--warn, orange)' }}>{error}</p>}
+      {data && !loading && (
+        <>
+          <p>Temperature: {data.temp}°C</p>
+          <p>Humidity: {data.humidity}%</p>
+          <p>Wind Speed: {data.wind} m/s</p>
+        </>
+      )}
+      {!data && !loading && !error && <p>No data.</p>}
+    </section>
+  );
 };
 
 export default WeatherDisplay;

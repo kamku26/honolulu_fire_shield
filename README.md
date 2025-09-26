@@ -1,64 +1,149 @@
 # Honolulu Fire Shield
 
-## Overview
-The Honolulu Fire Shield is a React application designed to provide a user-friendly interface for managing fire safety information and resources in Honolulu. This project utilizes TypeScript for type safety and Bootstrap for responsive design.
+A full-stack (React + FastAPI) prototype that provides live location-based weather data and a derived fire risk assessment for Honolulu (or any geolocated point). The frontend fetches weather + risk from a backend API (with graceful fallback directly to Open‑Meteo if the backend is offline).
 
-## Project Structure
+## Features
+- Live geolocation (HTML5 Geolocation API)
+- Weather fetch (Open‑Meteo) with humidity enrichment
+- Fire risk scoring (temperature, humidity, wind factors)
+- Gauge visualization of risk levels (Low → Extreme)
+- FastAPI backend consolidating weather + risk logic
+- Fallback client-side fetch if backend unavailable
+- Extensible service + risk abstraction for future indices (e.g. Fosberg)
+
+## Tech Stack
+| Layer | Tech |
+|-------|------|
+| Frontend | React 18, TypeScript, CRA (react-scripts) |
+| Backend | FastAPI, Uvicorn |
+| Data Source | Open‑Meteo (no API key) |
+| Tests (backend) | Pytest |
+
+## Project Structure (simplified)
 ```
-honolulu-fire-shield
-├── public
-│   └── index.html          # Main HTML template for the React application
-├── src
-│   ├── components
-│   │   └── SystemDefense.tsx # Component for rendering system defense UI
-│   ├── App.tsx             # Main App component
-│   ├── index.tsx           # Entry point of the React application
-│   └── types
-│       └── index.ts        # TypeScript interfaces and types
-├── package.json            # npm configuration file
-├── tsconfig.json           # TypeScript configuration file
-└── README.md               # Project documentation
+/ (repo root)
+├─ package.json
+├─ tsconfig.json
+├─ public/
+├─ src/
+│  ├─ index.tsx
+│  ├─ App.tsx
+│  ├─ components/
+│  │  ├─ FireRiskDashboard.tsx
+│  │  ├─ FireRiskAssessment.tsx
+│  │  ├─ WeatherDisplay.tsx
+│  │  ├─ LocationDisplay.tsx
+│  │  └─ HomeLocationInput.tsx (not yet wired in UI)
+│  ├─ hooks/
+│  │  ├─ useLiveLocation.ts
+│  │  └─ useWeatherData.ts (calls backend then falls back)
+│  └─ types/
+│     ├─ FireRiskResult.ts
+│     └─ index.ts
+└─ backend/
+   ├─ requirements.txt
+   └─ app/
+      ├─ main.py
+      ├─ config.py
+      ├─ services/
+      │  ├─ weather.py
+      │  └─ fire_risk.py
+      └─ models/
+         └─ schemas.py
 ```
 
-## Getting Started
+## Fire Risk Scoring
+Each factor contributes 0–3 points (higher risk adds more):
+- Temperature: >30°C +3, >25°C +2, >20°C +1
+- Humidity: <20% +3, <35% +2, <50% +1
+- Wind: >15 m/s +3, >8 +2, >4 +1
 
-### Prerequisites
-- Node.js (version 14 or higher)
-- npm (Node package manager)
+Total raw score 0–9 is scaled ×10 (0–90) for the gauge:
+| Raw | Level |
+|-----|-------|
+| 0–1 | Low |
+| 2–3 | Moderate |
+| 4 | High |
+| 5–6 | Very High |
+| 7–9 | Extreme |
 
-### Installation
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/honolulu-fire-shield.git
-   ```
-2. Navigate to the project directory:
-   ```
-   cd honolulu-fire-shield
-   ```
-3. Install the dependencies:
-   ```
-   npm install
-   ```
-
-### Running the Application
-To start the development server, run:
+## Running the Frontend
+```powershell
+# From repo root
+npm install
+npm start
+# Opens http://localhost:3000
 ```
+If you see a module resolution error, clear and reinstall:
+```powershell
+rd /s /q node_modules
+rm package-lock.json
+npm install
 npm start
 ```
-This will launch the application in your default web browser at `http://localhost:3000`.
 
-### Building for Production
-To create a production build of the application, run:
+## Backend Setup
+The backend lives in `backend/` and uses a Python virtual environment (recommended).
+
+### 1. Create / Activate Virtual Environment (if not already)
+```powershell
+# From repo root
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 ```
-npm run build
+
+### 2. Install Dependencies
+```powershell
+pip install -r backend/requirements.txt
 ```
-The build artifacts will be stored in the `build` directory.
 
-## Usage
-Once the application is running, you can navigate through the various components and utilize the features provided by the Honolulu Fire Shield.
+### 3. Run Backend Server
+```powershell
+uvicorn backend.app.main:app --reload --port 8000
+```
+Server will be at: `http://127.0.0.1:8000`
 
-## Contributing
-Contributions are welcome! Please open an issue or submit a pull request for any improvements or bug fixes.
+### 4. Test Health Endpoint
+```powershell
+curl http://127.0.0.1:8000/api/health
+```
+
+### 5. Example Weather POST
+```powershell
+curl -X POST http://127.0.0.1:8000/api/weather -H "Content-Type: application/json" -d '{"lat":21.3069,"lon":-157.8583}'
+```
+
+## Frontend ↔ Backend Integration
+The hook `useWeatherData` first POSTs to `/api/weather`. In development you can set up a proxy so `/api/*` goes to the backend:
+
+Add (if missing) a line in `package.json`:
+```json
+"proxy": "http://127.0.0.1:8000"
+```
+Restart `npm start` after adding the proxy. If the backend is down, the hook falls back to direct Open‑Meteo fetch and sets an error message.
+
+## Running Backend Tests
+```powershell
+.\.venv\Scripts\Activate.ps1
+pytest backend/tests -q
+```
+
+## Environment Variables
+You can override defaults using prefix `HFS_` (see `config.py`). Example:
+```powershell
+$env:HFS_DEFAULT_LAT=21.5
+$env:HFS_DEFAULT_LON=-157.9
+uvicorn backend.app.main:app --reload --port 8000
+```
+
+## Roadmap / Next Improvements
+- Persist a “home” location (localStorage + backend user profile later)
+- Add websocket or polling for periodic updates
+- Normalize risk score to full 0–100 scale
+- Add more indices (e.g. Fosberg, Keetch–Byram)
+- Better error + loading UI skeletons
+- Centralize location + weather in React context
+- Add frontend unit tests (Jest + React Testing Library)
 
 ## License
-This project is licensed under the MIT License. See the LICENSE file for details.
+MIT

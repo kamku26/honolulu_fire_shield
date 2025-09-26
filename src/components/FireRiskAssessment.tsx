@@ -1,13 +1,20 @@
 import React, { useMemo } from "react";
 import { FireRiskResult } from "../types/FireRiskResult";
 
-type Props = {
-	weather: {
-		temp: number;
-		humidity: number;
-		wind: number;
+interface WeatherData {
+	temp: number;
+	humidity: number;
+	wind: number;
+}
+interface Props {
+	weather: WeatherData | null;
+	backendRisk?: {
+		score: number;
+		level: string;
+		explanation: string;
+		color: string;
 	} | null;
-};
+}
 
 // Map score → level
 function mapScoreToLevel(score: number): FireRiskResult {
@@ -40,18 +47,18 @@ function mapScoreToLevel(score: number): FireRiskResult {
 		level === "Low"
 			? "var(--ok)"
 			: level === "Moderate"
-			? "var(--warn)"
-			: level === "High"
-			? "var(--high)"
-			: level === "Very High"
-			? "var(--vhigh)"
-			: "var(--extreme)";
+				? "var(--warn)"
+				: level === "High"
+					? "var(--high)"
+					: level === "Very High"
+						? "var(--vhigh)"
+						: "var(--extreme)";
 
 	return { score: score * 10, level, explanation, color };
 }
 
 // Compute fire risk
-function assessFireRisk(weather: Props["weather"]): FireRiskResult | null {
+function assessFireRisk(weather: WeatherData | null): FireRiskResult | null {
 	if (!weather) return null;
 	const { temp, humidity, wind } = weather;
 
@@ -75,8 +82,9 @@ function assessFireRisk(weather: Props["weather"]): FireRiskResult | null {
 const angleFromScore = (score: number) =>
 	`${Math.min(100, Math.max(0, score)) * 3.6 - 90}deg`;
 
-const FireRiskAssessment: React.FC<Props> = ({ weather }) => {
-	const risk = useMemo(() => assessFireRisk(weather), [weather]);
+const FireRiskAssessment: React.FC<Props> = ({ weather, backendRisk = null }) => {
+	const localRisk = useMemo(() => assessFireRisk(weather), [weather]);
+	const risk = backendRisk || localRisk;
 
 	if (!risk) return <div className="help">No weather data available.</div>;
 
@@ -94,6 +102,17 @@ const FireRiskAssessment: React.FC<Props> = ({ weather }) => {
 			<div>
 				<div style={{ fontWeight: 700, marginBottom: 6 }}>
 					Risk level: <span style={{ color: risk.color }}>{risk.level}</span>
+					{backendRisk && (
+						<span
+							style={{
+								marginLeft: 8,
+								fontSize: 12,
+								color: "var(--ok, #2e8b57)",
+							}}
+						>
+							backend
+						</span>
+					)}
 				</div>
 				<p className="help" style={{ maxWidth: 420, lineHeight: 1.4 }}>
 					{risk.explanation}
