@@ -5,6 +5,7 @@ import LocationDisplay from "./LocationDisplay";
 import WeatherDisplay from "./WeatherDisplay";
 import FireRiskAssessment from "./FireRiskAssessment";
 import HomeLocationInput from "./HomeLocationInput";
+import { StaticSatelliteMap } from "./StaticSatelliteMap";
 
 interface ManualLocation { lat: number; lon: number; label?: string }
 
@@ -63,6 +64,10 @@ const FireRiskDashboard: React.FC = () => {
 						<span className="card-sub">Updated just now</span>
 					</h3>
 					<WeatherDisplay data={weatherState.data} loading={weatherState.loading} error={weatherState.error} />
+					{/* Satellite snapshot */}
+					<div style={{ marginTop: 16 }}>
+						<StaticSatelliteMap lat={active.lat} lon={active.lon} width={560} height={260} />
+					</div>
 				</section>
 
 				<section className="card">
